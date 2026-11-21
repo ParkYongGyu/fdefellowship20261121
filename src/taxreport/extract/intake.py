@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -18,7 +19,7 @@ from taxreport.domain.models import (
 )
 from taxreport.extract.checks import run_checks
 from taxreport.extract.form_index import FormIndex, build_index
-from taxreport.extract.reader import PdfDocument, read_pdf
+from taxreport.extract.reader import PdfDocument, parse_comma_amount, read_pdf, row_text
 from taxreport.extract.schedules import extract_schedules
 from taxreport.extract.standard_forms import parse_standard_form
 from taxreport.extract.tax_forms import (
@@ -115,6 +116,11 @@ def extract_filing(path: Path, forms: FormsConfig) -> Filing:
     tax = TaxSummary(values=tax_values)
     schedules = extract_schedules(doc, forms.schedules)
     warnings.extend(run_checks(balance_sheet, income_statement, tax, schedules, forms))
+    warnings.extend(
+        check_gross_receipts(
+            doc, index.pages(forms.identity.form), forms.identity.form, income_statement, forms
+        )
+    )
 
     filing = Filing(
         source_file=doc.file_name,
@@ -138,6 +144,46 @@ def extract_filing(path: Path, forms: FormsConfig) -> Filing:
         warnings=len(warnings),
     )
     return filing
+
+
+_RECEIPTS_RE = re.compile(r"수\s*입\s*금\s*액\s*\(\s*(-?[\d,]*)\s*\)")
+
+
+def check_gross_receipts(
+    doc: PdfDocument,
+    pages: Sequence[int],
+    form_name: str,
+    income_statement: dict[str, LineItem],
+    forms: FormsConfig,
+) -> list[str]:
+    """신고서의 수입금액과 표준손익계산서의 매출액을 견준다.
+
+    두 값은 범위가 다를 수 있다(수입금액에는 영업외수익이 들어가기도 한다). 그래서 한쪽으로
+    덮어쓰지 않고, 다르면 차이만 경고로 남긴다. 보고서의 매출액은 표준손익계산서 값이다.
+    """
+    rules = forms.standard_forms.income_statement
+    code = rules.codes.get("revenue")
+    item = income_statement.get(code) if code is not None else None
+    for number in pages:
+        for row in doc.page(number).rows:
+            match = _RECEIPTS_RE.search(row_text(row))
+            if match is None:
+                continue
+            where = f"{doc.file_name} «{form_name}» {number}쪽 수입금액"
+            receipts = parse_comma_amount(match.group(1))
+            if receipts is None:
+                return [f"{where}: 금액 칸이 비어 있어 읽지 못했습니다(0으로 보지 않음)"]
+            if item is None or item.amount.value is None or item.amount.value == receipts:
+                return []
+            source = item.amount.source
+            page = source.page if source is not None else None
+            return [
+                f"서식 간 차이: {where} {receipts:,}원 / «{rules.form}» {page}쪽 "
+                f"{item.label}(코드 {item.code}) {item.amount.value:,}원 "
+                f"(차이 {receipts - item.amount.value:,}원). 수입금액은 영업외수익 등이 포함되어 "
+                "범위가 다를 수 있습니다. 보고서의 매출액은 표준손익계산서 값을 썼고 다른 값으로 바꾸지 않았습니다"
+            ]
+    return []
 
 
 def pair_filings(first: Filing, second: Filing) -> CompanyCase:

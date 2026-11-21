@@ -169,6 +169,12 @@ def build_report(case: CompanyCase, forms: FormsConfig, policy: Policy, issued_o
     for comparison in (*income_rows, *balance_rows):
         if comparison.prior.value is None or comparison.current.value is None:
             needs_check.append(f"«{comparison.label}» 값을 읽지 못했습니다")
+    held = [row.label for row in sga_rows if row.kind is SgaRowKind.ITEM and row.current.value is None]
+    if held:
+        needs_check.append(
+            f"판관비 «{', '.join(held)}»의 당기 금액을 읽지 못해 주요 {policy.sga.top_n}개 선정과 "
+            f"«{policy.sga.other_label}» 금액을 확정하지 못했습니다(읽은 항목만으로 고른 순서입니다)"
+        )
     needs_check += tax_needs_check
     needs_check += [
         f"{row.year}년 {row.item}: {row.form}" for row in evidence if row.status is ValueStatus.NEEDS_CHECK

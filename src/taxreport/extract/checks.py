@@ -70,6 +70,12 @@ def run_checks(
             p("net_income"),
         )
     )
+    revenue, cogs, operating = p("revenue"), p("cogs"), p("operating_income")
+    if revenue is not None and cogs is not None and revenue != 0 and revenue == cogs:
+        results.append(
+            f"매출원가가 매출액과 같은 금액({cogs:,}원)으로 적혀 있습니다. "
+            "PDF에 적힌 그대로이며 고치지 않았습니다. 원본 확인이 필요합니다"
+        )
     sga_code = pl.codes.get("sga_total")
     if sga_code is not None and sga_code in income_statement:
         details = [
@@ -77,6 +83,13 @@ def run_checks(
             for item in income_statement.values()
             if item.parent_code == sga_code and item.amount.value is not None
         ]
+        implied = minus(minus(revenue, cogs), operating)
+        if p("sga_total") is None and implied is not None and details and implied < sum(details, Decimal(0)):
+            results.append(
+                "검증 불일치: 매출액 - 매출원가 - 영업손익으로 계산한 판관비"
+                f"({implied:,}원)가 읽은 판관비 세부 항목 합({sum(details, Decimal(0)):,}원)보다 작습니다. "
+                "매출액·매출원가·영업손익 중 서로 맞지 않는 값이 있습니다"
+            )
         if details:
             results.append(
                 _compare("판관비 세부 항목 합 = 판매비와관리비", sum(details, Decimal(0)), p("sga_total"))
