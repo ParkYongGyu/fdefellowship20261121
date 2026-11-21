@@ -16,14 +16,16 @@
 - Lint: `uv run ruff check .`
 - Type check: `uv run mypy src --strict`
 
-M1~M3(추출 → 분석 → 보고서 PDF)까지 구현됐다. Excel과 조정료청구서(M4)는 아직 없다. 구현 중 설계와 달라진 점은 `docs/TRD.md` 14장에 있다.
+M1~M3(추출 → 분석 → 보고서 PDF)까지 구현됐고 위하고·세무사랑 두 서식을 읽는다. Excel과 조정료청구서(M4)는 아직 없다. 차수별로 바뀐 점은 `docs/TRD.md` 14~17장에 있다.
 
 ## Key Docs
 
 - `CLAUDE.md` — 실습 규칙, 고객이 확정한 기준, PDF 구조와 추출 시 주의점, 검증용 기준값
 - `docs/TRD.md` — 설계: 범위, 가정, 아키텍처, 데이터 모델, 서식별 추출 규칙, 보고서 규칙
 - `docs/exec-plans/active/` — 진행 중인 실행 계획
-- `claudedocs/1차_질문지.md` — 고객 질의·답변 원문 (답변은 지우지 않고 누적)
+- `README.md` — 사용법과 지원 범위
+- `claudedocs/` — 차수별 기록과 고객 질의·답변(`질문답변_1차-4차.xlsx`)
+- `docs/claude_harness_python.md` — 개발에 쓴 harness 스킬 원문
 
 ## Repository Structure
 

@@ -296,6 +296,12 @@ def extract_credits(doc: PdfDocument, pages: Sequence[int], rules: CreditRules) 
             if before and law_pattern.search(before[-1]):
                 law = before.pop()
             name = "".join(before)
+            if rules.row_number_pattern:
+                name = re.sub(rules.row_number_pattern, "", name)
+            if law is None and rules.glued_law_pattern:
+                glued = re.match(rules.glued_law_pattern, name)
+                if glued:
+                    name, law = glued.group(1), glued.group(2)
             if any(skip in name for skip in rules.skip_labels):
                 continue
             if not name:
