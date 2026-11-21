@@ -161,7 +161,7 @@ def test_report_from_sample(sample_case: CompanyCase, forms: FormsConfig, policy
     assert shown["매출액"] == ("9,294만원", "1.93억원")
     assert shown["부채비율"] == ("자본잠식 (-354.88%)", "51.79%")
     assert [row.code for row in report.sga_items[:5]] == ["68", "108", "124", "79", "80"]
-    assert len(report.needs_check) == 1
+    assert len(report.needs_check) == 2  # 결손금 차이 + «37.기타» 항목의 뜻 확인
     pages = {(row.item, row.year): row.page for row in report.evidence}
     assert pages[("매출액", 2025)] == 41
     assert pages[("자본총계(Ⅲ+~Ⅵ)", 2024)] == 23

@@ -20,7 +20,7 @@ from taxreport.domain.models import (
 )
 
 Statement = Literal["income", "balance"]
-_NUMBERING_RE = re.compile(r"^(?:[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+\.|\(\d+\)|\d+\.|[가-힣]\.)\s*")
+_NUMBERING_RE = re.compile(r"^(?:[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+\.|[IVX]+\.|\(\d+\)|\d+\.|[가-힣]\.)\s*")
 DEBT_RATIO_NOTE = "부채총계 ÷ 자본총계 × 100"
 
 

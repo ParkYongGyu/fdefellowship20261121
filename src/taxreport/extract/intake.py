@@ -146,6 +146,7 @@ def extract_filing(path: Path, forms: FormsConfig) -> Filing:
     return filing
 
 
+_TRAILING_TAG_RE = re.compile(r"\s*\([^()]*\)\s*$")
 _RECEIPTS_RE = re.compile(r"수\s*입\s*금\s*액\s*\(\s*(-?[\d,]*)\s*\)")
 
 
@@ -209,9 +210,18 @@ def pair_filings(first: Filing, second: Filing) -> CompanyCase:
             f"당기 {current.identity.period_start}~{current.identity.period_end}"
         )
     if prior.identity.name != current.identity.name:
-        current.warnings.append(
-            f"법인명 표기가 연도마다 다릅니다: {prior.identity.name} / {current.identity.name}"
-        )
+        # 프로그램이 법인명 뒤에 붙인 표시(예: «(10기)», «(최종)»)만 다르면 공통 이름을 쓴다.
+        bases = {_TRAILING_TAG_RE.sub("", filing.identity.name).strip() for filing in (prior, current)}
+        original = f"{prior.identity.name} / {current.identity.name}"
+        if len(bases) == 1 and (base := bases.pop()):
+            prior.identity.name = base
+            current.identity.name = base
+            current.warnings.append(
+                f"법인명 표기가 연도마다 다릅니다({original}). 끝의 괄호 표시는 법인명이 아닌 것으로 보고 "
+                f"«{base}»로 적었습니다(가정)"
+            )
+        else:
+            current.warnings.append(f"법인명 표기가 연도마다 다릅니다: {original}")
     return CompanyCase(prior=prior, current=current)
 
 

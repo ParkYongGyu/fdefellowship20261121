@@ -116,6 +116,31 @@ def nearest_word(candidates: Sequence[Word], target: Word, max_distance: float) 
     return best
 
 
+_EMBEDDED_AMOUNT_RE = re.compile(r"(-?\d{1,3}(?:,\d{3})+)")
+
+
+def split_glued(word: Word) -> list[Word]:
+    """금액과 글자가 붙어 추출된 단어를 나눈다. 예: `150,934,713II.비유동자산` → 금액 + 항목명.
+
+    글자 간격이 좁은 서식에서는 옆 칸의 내용이 한 단어로 붙어 나온다. 가로 위치는 글자 수에
+    비례해 나눈다.
+    """
+    if "," not in word.text or is_comma_amount(word.text):
+        return [word]
+    parts = [part for part in _EMBEDDED_AMOUNT_RE.split(word.text) if part]
+    if len(parts) < 2:
+        return [word]
+    total = sum(len(part) for part in parts)
+    width = word.x1 - word.x0
+    pieces: list[Word] = []
+    offset = 0
+    for part in parts:
+        x0 = word.x0 + width * offset / total
+        offset += len(part)
+        pieces.append(Word(text=part, x0=x0, x1=word.x0 + width * offset / total, top=word.top))
+    return pieces
+
+
 def _group_rows(words: list[Word]) -> tuple[Row, ...]:
     rows: list[list[Word]] = []
     for word in sorted(words, key=lambda w: (w.top, w.x0)):
@@ -167,13 +192,16 @@ def read_pdf(path: Path) -> PdfDocument:
             for number, page in enumerate(pdf.pages, start=1):
                 raw = page.extract_words(x_tolerance=3, y_tolerance=3)
                 words = [
-                    Word(
-                        text=str(item["text"]),
-                        x0=float(item["x0"]),
-                        x1=float(item["x1"]),
-                        top=float(item["top"]),
-                    )
+                    piece
                     for item in raw
+                    for piece in split_glued(
+                        Word(
+                            text=str(item["text"]),
+                            x0=float(item["x0"]),
+                            x1=float(item["x1"]),
+                            top=float(item["top"]),
+                        )
+                    )
                 ]
                 pages.append(
                     PageText(
