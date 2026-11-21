@@ -1,0 +1,38 @@
+# 고객에게 받은 자료 (저장소에 올리지 않음)
+/*.pdf
+/*.xlsx
+/*.pptx
+/실습안내*.html
+/materials/
+
+# Office 잠금 파일
+~$*
+
+# 실습과 무관한 로컬 디렉터리
+.setting.*/
+.omc/
+
+# harness 작업 산출물
+.harness/
+run_phases.py
+
+# 프로그램 출력물
+output/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# 글꼴 파일 (라이선스 확인 전에는 올리지 않음)
+assets/fonts/*.ttf
+assets/fonts/*.otf
+
+.DS_Store
+.env
