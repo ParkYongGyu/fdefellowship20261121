@@ -36,9 +36,9 @@ Forward Fellowship 6주차 실습. 고객 샘플세무법인의 요구사항과 
 
 - [x] Phase 1 Clarify — 모호한 점 해소
 - [x] Phase 2 Context — 관련 파일 및 패턴 파악
-- [ ] Phase 3 Plan — run_phases.py 생성, 사용자 승인
-- [ ] Phase 4 Generate — 코드 생성 완료
-- [ ] Phase 5 Evaluate — 검증 통과
+- [x] Phase 3 Plan — run_phases.py 생성, 사용자 승인
+- [x] Phase 4 Generate — 코드 생성 완료
+- [x] Phase 5 Evaluate — 검증 통과
 - [ ] Phase 6 PR — PR 생성 및 링크 기록
 
 ## 설계 결정 로그 (Decision Log)
@@ -70,7 +70,10 @@ Forward Fellowship 6주차 실습. 고객 샘플세무법인의 요구사항과 
 
 ## 기술 부채 (Tech Debt Discovered)
 
-- (없음)
+- M4 미구현: 보고서 Excel, 조정료청구서
+- 샘플에 없는 서식 경로(손금산입, 세액공제, 가지급금, 다년 결손금)는 실제 PDF로 검증하지 못함
+- macOS 외 환경의 기본 글꼴 경로 없음
+- 보고서 생성에 약 27초 걸림(PDF 2개 전체 쪽을 읽음)
 
 ## 완료 노트 (Completion Notes)
 

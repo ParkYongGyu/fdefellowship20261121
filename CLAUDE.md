@@ -15,10 +15,10 @@ Forward Fellowship 6주차 실습 «샘플세무법인 법인세 보고서 자�
 - 구현은 Python이고 `claude_harness_python` 스킬의 흐름(Clarify → Context → Plan → Generate → Evaluate → PR)을 따른다. 설계는 `docs/TRD.md`, 진행 상황은 `docs/exec-plans/active/`, 에이전트용 목차는 `AGENTS.md`에 있다.
 - 사용 형태는 CLI가 먼저다. 웹 화면은 1차 통과 후 같은 로직 위에 붙인다. 요약 코멘트와 특이사항은 규칙 기반 문장 틀로 만든다(LLM 호출 없음).
 
-## 명령 (구현 후 사용)
+## 명령
 
 ```
-uv run taxreport build <PDF1> <PDF2> --out output/   # 보고서 PDF·Excel, 조정료청구서 생성
+uv run taxreport build <PDF1> <PDF2> --out output/   # 보고서 PDF와 추출결과 JSON 생성 (Excel·청구서는 아직 없음)
 uv run taxreport inspect <PDF>                        # 서식 색인과 추출값·출처 확인
 uv run pytest -q                                      # 전체 테스트
 uv run pytest tests/test_x.py::test_name              # 단일 테스트
@@ -72,7 +72,7 @@ uv run mypy src --strict
 
 ## PDF 구조와 추출 시 주의점
 
-두 PDF 모두 텍스트 레이어가 있어 `pdftotext -layout`으로 읽힌다(OCR 불필요). 위하고(WEHAGO) 출력물이고 «세무조정계산서(법정 서식) → 결산보고서(재무상태표·손익계산서·원가명세서·잉여금처분·합계잔액시산표·부속명세서)» 순서다. 2~3쪽에 목차가 있다.
+두 PDF 모두 텍스트 레이어가 있어 `pdftotext -layout`으로 읽힌다(OCR 불필요). 프로그램은 `pdfplumber`로 읽는다. 아래 설명 중 글자 사이 공백과 숫자 안 공백은 `pdftotext` 출력의 특징이고, `pdfplumber`에서는 `(주)샘플컴퍼니`처럼 붙어 나오며 표준서식 금액은 `: : : 62:045:447`처럼 칸별 단어로 나온다(`docs/TRD.md` 14장). 위하고(WEHAGO) 출력물이고 «세무조정계산서(법정 서식) → 결산보고서(재무상태표·손익계산서·원가명세서·잉여금처분·합계잔액시산표·부속명세서)» 순서다. 2~3쪽에 목차가 있다.
 
 - **연도마다 들어 있는 서식과 페이지가 다르다.** 2024에는 소득금액조정합계표·최저한세·공제감면 서식이 없고, 2025에는 주식등변동상황명세서가 없다. 페이지 번호가 아니라 서식 제목으로 찾는다.
 - **재무 숫자는 표준재무상태표·표준손익계산서에서 읽는다(고객 확정).** 결산보고서의 재무상태표·손익계산서 값으로 바꿔 넣으면 안 된다. 결산보고서는 검증과 부속명세서 특이사항에만 쓴다.

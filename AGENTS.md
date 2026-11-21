@@ -9,14 +9,14 @@
 
 ## Quick Start
 
-- Tech stack: Python ≥ 3.12, uv, pdfplumber, pydantic v2, reportlab, matplotlib, openpyxl, structlog
+- Tech stack: Python ≥ 3.12, uv, pdfplumber, pydantic v2, reportlab, matplotlib, structlog (openpyxl은 M4에서 추가)
 - Entry point: `src/taxreport/cli.py`
 - Run: `uv run taxreport build <PDF1> <PDF2> --out output/`
 - Run tests: `uv run pytest -q` (단일 테스트: `uv run pytest tests/test_x.py::test_name`)
 - Lint: `uv run ruff check .`
 - Type check: `uv run mypy src --strict`
 
-코드는 아직 없다. 구현 순서는 `docs/TRD.md` 12장을 따른다.
+M1~M3(추출 → 분석 → 보고서 PDF)까지 구현됐다. Excel과 조정료청구서(M4)는 아직 없다. 구현 중 설계와 달라진 점은 `docs/TRD.md` 14장에 있다.
 
 ## Key Docs
 
