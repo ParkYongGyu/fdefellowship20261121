@@ -1,0 +1,158 @@
+# 서식 인식 규칙과 항목 코드.
+# 새 서식이나 다른 양식(다른 회계 프로그램 출력물)이 들어오면 이 파일에 규칙을 추가한다.
+# 패턴은 정규식이고, 쪽 앞부분 글자에서 공백을 모두 없앤 문자열에 적용한다.
+
+index:
+  head_lines: 8
+  toc_pattern: '^목차'
+  # 등록하지 않은 서식의 첫 쪽을 알아보는 표시. 앞 서식에 잘못 이어 붙이지 않기 위해 쓴다.
+  generic_start_patterns:
+    - '별지.{0,20}서식'
+  unknown_form_name: (미등록 서식)
+
+# 위에서부터 먼저 맞는 것을 쓴다. 더 구체적인 제목을 위에 둔다.
+forms:
+  - name: 법인세과세표준및세액신고서
+    patterns: ['법인세과세표준및세액신고서']
+  - name: 법인세과세표준및세액조정계산서
+    patterns: ['법인세과세표준및세액조정계산서']
+  - name: 최저한세조정계산서
+    patterns: ['최저한세조정계산서']
+  - name: 공제감면세액및추가납부세액합계표(갑)
+    patterns: ['공제감면세액및.{0,80}추가납부세액합계표\(갑\)']
+  - name: 공제감면세액및추가납부세액합계표(을)
+    patterns: ['공제감면세액및.{0,80}추가납부세액합계표\(을\)']
+  - name: 소득금액조정합계표
+    patterns: ['소득금액조정합계표']
+  - name: 자본금과적립금조정명세서(갑)
+    patterns: ['자본금과적립금조정명세서\(갑\)']
+  - name: 합계표준재무상태표
+    patterns: ['합계표준재무상태표']
+  - name: 표준재무상태표
+    patterns: ['표준재무상태표']
+  - name: 표준손익계산서
+    patterns: ['표준손익계산서']
+  # 결산보고서. 숫자 출처로 쓰지 않는다(쪽 경계를 나누는 데만 쓴다).
+  - name: 재무상태표(결산보고서)
+    patterns: ['^재무상태표']
+  - name: 손익계산서(결산보고서)
+    patterns: ['^손익계산서']
+  - name: 원가명세서(결산보고서)
+    patterns: ['^(제조)?원가명세서']
+  - name: 잉여금처분계산서(결산보고서)
+    patterns: ['^이익잉여금처분계산서', '^결손금처리계산서']
+  - name: 합계잔액시산표
+    patterns: ['^합계잔액시산표']
+  - name: 부속명세서
+    patterns: ['^[^\d]{2,30}명세서\d+기\d{4}년']
+
+identity:
+  form: 법인세과세표준및세액신고서
+  # 아래 세 패턴은 공백을 없애지 않은 원문 줄에 적용한다(법인명 안의 공백을 지키기 위해).
+  business_no_pattern: '사업자등록번호\s*(\d{3}-\d{2}-\d{5})'
+  name_pattern: '법\s*인\s*명\s+(.+?)\s+(?:④|전\s*화\s*번\s*호)'
+  period_pattern: '사\s*업\s*연\s*도\s*(\d{4})\.(\d{1,2})\.(\d{1,2})\s*~\s*(\d{4})\.(\d{1,2})\.(\d{1,2})'
+
+standard_forms:
+  balance_sheet:
+    form: 표준재무상태표
+    codes:
+      current_assets: "1"
+      non_current_assets: "80"
+      total_assets: "228"
+      current_liabilities: "229"
+      non_current_liabilities: "284"
+      total_liabilities: "333"
+      capital_stock: "334"
+      retained_earnings: "372"
+      total_equity: "382"
+    # 특이사항 규칙에서 쓰는 계정
+    note_codes:
+      receivables: ["10"]            # 외상매출금
+      officer_borrowings: ["236"]    # 주주·임원·직원단기차입금 (결산서의 가수금)
+      officer_loans: ["27", "91"]    # 주주·임원·직원 단기·장기대여금 (가지급금)
+  income_statement:
+    form: 표준손익계산서
+    codes:
+      revenue: "1"
+      cogs: "35"
+      gross_profit: "66"
+      sga_total: "67"
+      operating_income: "129"
+      non_operating_income: "130"
+      non_operating_expense: "179"
+      pretax_income: "217"
+      income_tax: "218"
+      net_income: "219"
+    note_codes: {}
+
+tax_adjustment:
+  form: 법인세과세표준및세액조정계산서
+  # 왼쪽 단의 코드 열 위치를 잡는 기준 코드
+  anchor_code: "01"
+  codes:
+    net_income: "01"
+    income_addition: "02"
+    income_deduction: "03"
+    taxable_income: "06"
+    loss_carryforward_used: "07"
+    tax_base: "10"
+    tax_rate: "11"
+    calculated_tax: "12"
+    credits_subject_to_minimum_tax: "17"
+    total_tax: "21"
+  labels:
+    net_income: 결산서상 당기순손익
+    income_addition: 익금산입
+    income_deduction: 손금산입
+    taxable_income: 각 사업연도 소득금액
+    loss_carryforward_used: 이월결손금
+    tax_base: 과세표준
+    tax_rate: 세율(%)
+    calculated_tax: 산출세액
+    credits_subject_to_minimum_tax: 최저한세 적용대상 공제감면세액
+    total_tax: 총부담세액(가감계)
+
+minimum_tax:
+  form: 최저한세조정계산서
+  code_header: 코드
+  rows:
+    minimum_tax: {code: "20", column: ③최저한세}
+    tax_after_credits: {code: "23", column: ②감면후세액}
+  labels:
+    minimum_tax: 최저한세
+    tax_after_credits: 감면 후 세액(차감세액)
+
+adjustments:
+  form: 소득금액조정합계표
+  # 이 글자가 모두 들어 있는 줄(열 제목) 아래부터 읽는다.
+  header_keywords: [과목, 금액]
+  total_labels: [합계]
+
+credits:
+  form: 공제감면세액및추가납부세액합계표(갑)
+  code_header: 코드
+  code_pattern: '^[0-9][0-9A-Z]{2}$'
+  amount_header_pattern: '^(④감면|⑦공제).*세액$'
+  law_pattern: '(법|령|규칙|부칙).*제\d+조'
+  skip_labels: [소계, 합계, 총계]
+
+losses:
+  form: 자본금과적립금조정명세서(갑)
+  row_pattern: '^(\d{4})-(\d{2})-(\d{2})$'
+  # 열 제목에 들어 있는 글자 → 그 열에 가장 가까운 금액을 읽는다.
+  columns:
+    incurred: ⑦
+    used_current: ⑬
+    balance: 기한내
+
+schedules:
+  title_pattern: '^(\S+명세서)$'
+  asof_pattern: '^\d+기\d{4}년\d{1,2}월\d{1,2}일현재$'
+  header_account: 계정과목명
+  ending_header: 금액
+  total_labels: [합계]
+  accounts:
+    receivables: [외상매출금]
+    officer_borrowings: [가수금]
+    officer_loans: [가지급금, 대여금]

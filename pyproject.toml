@@ -1,0 +1,58 @@
+[project]
+name = "taxreport"
+version = "0.1.0"
+description = "세무조정계산서 PDF 2개(전기·당기)로 법인세 분석 보고서를 만드는 CLI"
+requires-python = ">=3.12"
+dependencies = [
+    "pdfplumber>=0.11",
+    "pydantic>=2.7",
+    "reportlab>=4.2",
+    "matplotlib>=3.9",
+    "pyyaml>=6.0",
+    "structlog>=24.1",
+]
+
+[project.scripts]
+taxreport = "taxreport.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-PyYAML>=6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/taxreport"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["run_phases.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "T20"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# print()는 cli.py의 최종 결과 출력에만 쓴다.
+"src/taxreport/cli.py" = ["T201"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["pdfplumber.*", "reportlab.*", "matplotlib.*", "yaml.*"]
+ignore_missing_imports = true
+follow_untyped_imports = false
