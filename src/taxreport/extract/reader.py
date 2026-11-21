@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import pdfplumber
 import structlog
@@ -14,6 +15,13 @@ import structlog
 log = structlog.get_logger(__name__)
 
 ROW_TOLERANCE = 3.0
+# 금액을 가린 회색 칸: 밝은 회색(흰색·검정 제외)으로 칠한 낮은 도형.
+SHADE_MIN_GRAY = 0.85
+SHADE_MAX_GRAY = 0.95
+SHADE_MAX_HEIGHT = 14.0
+SHADE_MIN_WIDTH = 8.0
+SHADE_ROW_OFFSET = 4.0
+SHADE_ROW_TOLERANCE = 6.0
 _SPACE_RE = re.compile(r"\s+")
 _COMMA_AMOUNT_RE = re.compile(r"^-?\d{1,3}(,\d{3})*$")
 
@@ -38,10 +46,26 @@ Row = tuple[Word, ...]
 
 
 @dataclass(frozen=True)
+class Shade:
+    """회색으로 칠한 작은 영역. 금액을 가린 칸을 알아보는 데 쓴다."""
+
+    x0: float
+    x1: float
+    top: float
+    bottom: float
+
+    def covers(self, x0: float, x1: float, top: float) -> bool:
+        """가로 범위가 겹치고 세로로 같은 줄에 있으면 True."""
+        middle = (self.top + self.bottom) / 2
+        return self.x0 < x1 and self.x1 > x0 and abs(middle - (top + SHADE_ROW_OFFSET)) <= SHADE_ROW_TOLERANCE
+
+
+@dataclass(frozen=True)
 class PageText:
     number: int  # 1부터 시작
     width: float
     rows: tuple[Row, ...]
+    shades: tuple[Shade, ...] = ()
 
     @property
     def lines(self) -> list[str]:
@@ -102,6 +126,38 @@ def _group_rows(words: list[Word]) -> tuple[Row, ...]:
     return tuple(tuple(sorted(row, key=lambda w: w.x0)) for row in rows)
 
 
+def _gray_level(color: object) -> float | None:
+    """칠 색이 회색이면 밝기(0~1), 아니면 None."""
+    if isinstance(color, int | float):
+        return float(color)
+    if isinstance(color, list | tuple) and color:
+        try:
+            parts = [float(part) for part in color]
+        except (TypeError, ValueError):
+            return None
+        if len(parts) == 1:
+            return parts[0]
+        if len(parts) == 3 and max(parts) - min(parts) < 0.02:
+            return parts[0]
+    return None
+
+
+def _shades(page: Any) -> tuple[Shade, ...]:
+    found: list[Shade] = []
+    for shape in [*page.curves, *page.rects]:
+        if not shape.get("fill"):
+            continue
+        level = _gray_level(shape.get("non_stroking_color"))
+        if level is None or not SHADE_MIN_GRAY <= level <= SHADE_MAX_GRAY:
+            continue
+        x0, x1 = float(shape["x0"]), float(shape["x1"])
+        top, bottom = float(shape["top"]), float(shape["bottom"])
+        if x1 - x0 < SHADE_MIN_WIDTH or bottom - top > SHADE_MAX_HEIGHT:
+            continue
+        found.append(Shade(x0=x0, x1=x1, top=top, bottom=bottom))
+    return tuple(found)
+
+
 def read_pdf(path: Path) -> PdfDocument:
     if not path.is_file():
         raise PdfReadError(f"PDF 파일을 찾지 못했습니다: {path}")
@@ -120,7 +176,12 @@ def read_pdf(path: Path) -> PdfDocument:
                     for item in raw
                 ]
                 pages.append(
-                    PageText(number=number, width=float(page.width), rows=_group_rows(words))
+                    PageText(
+                        number=number,
+                        width=float(page.width),
+                        rows=_group_rows(words),
+                        shades=_shades(page),
+                    )
                 )
     except PdfReadError:
         raise

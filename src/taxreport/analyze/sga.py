@@ -53,11 +53,10 @@ def build_sga_rows(case: CompanyCase, forms: FormsConfig, policy: Policy) -> lis
             composition=percent_of(current.value, current_total.value, decimals),
         )
 
-    candidates = [
-        item
-        for item in sga_candidates(case.current.income_statement, total_code)
-        if (item.amount.value or Decimal(0)) > 0
-    ]
+    everything = sga_candidates(case.current.income_statement, total_code)
+    # 금액을 읽지 못한 항목은 순위에 넣을 수 없다. 표에 «확인 필요»로 따로 보여 준다.
+    unreadable = [item for item in everything if item.amount.value is None]
+    candidates = [item for item in everything if (item.amount.value or Decimal(0)) > 0]
     candidates.sort(key=lambda item: (-(item.amount.value or Decimal(0)), int(item.code)))
     top = candidates[: policy.sga.top_n]
 
@@ -68,6 +67,15 @@ def build_sga_rows(case: CompanyCase, forms: FormsConfig, policy: Policy) -> lis
             prior_item.amount
             if prior_item is not None
             else SourcedValue(value=Decimal(0), status=ValueStatus.ASSUMED, note=ABSENT_PRIOR_NOTE)
+        )
+        rows.append(row(_row_label(item, rules.form, policy), SgaRowKind.ITEM, item.code, prior, item.amount))
+
+    for item in unreadable:
+        prior_item = case.prior.income_statement.get(item.code)
+        prior = (
+            prior_item.amount
+            if prior_item is not None
+            else SourcedValue.missing("전기 서식에 같은 코드가 없습니다")
         )
         rows.append(row(_row_label(item, rules.form, policy), SgaRowKind.ITEM, item.code, prior, item.amount))
 
