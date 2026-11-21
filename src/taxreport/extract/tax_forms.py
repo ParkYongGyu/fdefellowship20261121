@@ -42,7 +42,7 @@ log = structlog.get_logger(__name__)
 CODE_COLUMN_TOLERANCE = 6.0
 HEADER_MATCH_DISTANCE = 15.0
 CODE_HEADER_DISTANCE = 20.0
-AMOUNT_GAP_RATIO = 0.2  # 코드와 금액 사이 간격의 상한(쪽 너비 대비)
+AMOUNT_GAP_RATIO = 0.16  # 코드와 금액 사이 간격의 상한(쪽 너비 대비). 넓히면 옆 단의 줄 번호를 금액으로 읽는다
 BLANK_NOTE = "빈 칸"
 
 
@@ -55,6 +55,15 @@ def _confirmed(
         source=Source(file=doc.file_name, form=form, page=page, code=code, label=label),
         note=BLANK_NOTE if value is None else None,
     )
+
+
+def _is_code_word(word: Word, code: str, anchor: Word) -> bool:
+    """코드 열에 있는 코드 단어인가. 산식 괄호와 붙어 `)21`처럼 나온 경우도 받는다."""
+    if word.text == code:
+        return abs(word.x0 - anchor.x0) <= CODE_COLUMN_TOLERANCE
+    if word.text.endswith(")" + code):
+        return abs(word.x1 - anchor.x1) <= CODE_COLUMN_TOLERANCE
+    return False
 
 
 def extract_tax_summary(
@@ -77,7 +86,7 @@ def extract_tax_summary(
                     (
                         i
                         for i, w in enumerate(row)
-                        if w.text == code and abs(w.x0 - anchor.x0) <= CODE_COLUMN_TOLERANCE
+                        if _is_code_word(w, code, anchor)
                     ),
                     None,
                 )
@@ -154,9 +163,13 @@ def extract_minimum_tax(
     return values
 
 
+_HAS_LETTER_RE = re.compile(r"[가-힣A-Za-z]")
+
+
 def _parse_adjustment_half(words: Sequence[Word]) -> tuple[str, Decimal, str | None] | None:
+    """(과목, 금액, 소득처분). 과목이 다른 줄에 있으면 과목은 빈 문자열로 돌려준다."""
     index = next((i for i, w in enumerate(words) if is_comma_amount(w.text)), None)
-    if index is None or index == 0:
+    if index is None:
         return None
     amount = parse_comma_amount(words[index].text)
     if amount is None:
@@ -176,6 +189,8 @@ def extract_adjustments(
         page = doc.page(number)
         middle = page.width / 2
         in_body = False
+        prefixes: dict[AdjustmentKind, str] = {}
+        open_items: dict[AdjustmentKind, TaxAdjustment | None] = {}
         for row in page.rows:
             text = despace(row_text(row))
             if not in_body:
@@ -188,9 +203,30 @@ def extract_adjustments(
             for kind, words in halves:
                 parsed = _parse_adjustment_half(words)
                 if parsed is None:
+                    # 금액이 없는 줄: 과목이 여러 줄로 나뉜 경우의 앞·뒤 조각이다.
+                    text = "".join(w.text for w in words)
+                    if not text:
+                        continue
+                    waiting = open_items.get(kind)
+                    if waiting is not None:
+                        waiting.subject += text
+                        if waiting.amount.source is not None:
+                            waiting.amount.source.label = waiting.subject
+                        open_items[kind] = None
+                    else:
+                        prefixes[kind] = text
                     continue
                 subject, amount, disposition = parsed
-                if subject in rules.total_labels:
+                wrapped = subject == ""
+                if wrapped and disposition is None:
+                    # 금액만 있는 줄은 쪽 번호 같은 꼬리말이다. 조정 항목으로 보지 않는다.
+                    prefixes[kind] = ""
+                    continue
+                if wrapped:
+                    subject = prefixes.get(kind, "")
+                prefixes[kind] = ""
+                open_items[kind] = None
+                if subject in rules.total_labels or not _HAS_LETTER_RE.search(subject):
                     continue
                 result.append(
                     TaxAdjustment(
@@ -210,6 +246,8 @@ def extract_adjustments(
                         ),
                     )
                 )
+                if wrapped:
+                    open_items[kind] = result[-1]
     log.info("adjustments_extracted", file=doc.file_name, count=len(result))
     return result
 

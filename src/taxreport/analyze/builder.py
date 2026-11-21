@@ -33,6 +33,14 @@ log = structlog.get_logger(__name__)
 CALCULATED_FORM = "계산값"
 
 
+def _is_generic_item(case: CompanyCase, code: str, policy: Policy) -> bool:
+    """서식의 항목 이름이 «기타»뿐이거나 비어 있어 뜻을 알 수 없는 항목인가."""
+    item = case.current.income_statement.get(code)
+    if item is None:
+        return False
+    return display_label(item.label) in ("", policy.sga.other_label)
+
+
 def _evidence(item: str, year: int, value: SourcedValue, style: NumberStyle = NumberStyle.WON) -> EvidenceRow | None:
     source = value.source
     if source is None:
@@ -174,6 +182,20 @@ def build_report(case: CompanyCase, forms: FormsConfig, policy: Policy, issued_o
         needs_check.append(
             f"판관비 «{', '.join(held)}»의 당기 금액을 읽지 못해 주요 {policy.sga.top_n}개 선정과 "
             f"«{policy.sga.other_label}» 금액을 확정하지 못했습니다(읽은 항목만으로 고른 순서입니다)"
+        )
+    generic = [
+        row
+        for row in sga_rows
+        if row.kind is SgaRowKind.ITEM and row.code is not None and _is_generic_item(case, row.code, policy)
+    ]
+    for row in generic:
+        item = case.current.income_statement[row.code or ""]
+        source = item.amount.source
+        needs_check.append(
+            f"판관비 «{row.label}»(코드 {item.code}, {source.form if source else ''} "
+            f"{source.page if source else '-'}쪽)은 서식에 «{item.label}»로만 적혀 있어 어떤 계정을 모은 "
+            "금액인지 알 수 없습니다. 출력 프로그램에 따라 담는 계정이 달라 다른 서식의 같은 이름 항목과 "
+            "같은 항목으로 보지 않았습니다(금액은 서식에 적힌 그대로)"
         )
     needs_check += tax_needs_check
     needs_check += [

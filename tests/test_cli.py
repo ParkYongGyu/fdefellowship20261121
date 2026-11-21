@@ -37,7 +37,7 @@ def test_build_writes_pdf_and_json(
     assert data["current"]["identity"]["fiscal_year"] == 2025
     assert data["current"]["income_statement"]["1"]["amount"]["source"]["page"] == 10
     out = capsys.readouterr().out
-    assert "확인 필요: 1건" in out
+    assert "확인 필요: 2건" in out
     assert "가정:" in out
 
 
