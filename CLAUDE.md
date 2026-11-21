@@ -11,7 +11,7 @@ Forward Fellowship 6주차 실습 «샘플세무법인 법인세 보고서 자�
 ## 저장소와 개발 방식
 
 - 원격: `https://github.com/ParkYongGyu/fdefellowship20261121.git`. `main`에 직접 작업하지 않고 `harness/YYYYMMDD-<slug>` 브랜치에서 작업해 PR로 올린다.
-- **고객에게 받은 자료(Excel, PDF, 실습 안내)와 채팅으로 받는 추가 파일은 커밋하지 않는다.** `.gitignore`로 제외돼 있다. `.setting.*/`, `.omc/`, `.harness/`, `output/`, 글꼴 파일도 마찬가지다.
+- 실습에서 받은 자료(루트의 Excel·PDF·실습 안내)와 담당자가 보내 준 파일(`replied_pdfs/`)은 사용자 요청으로 커밋돼 있다. **새로 받는 자료를 올릴지는 사용자에게 확인한다.** `.setting.*/`, `.omc/`, `.harness/`, `output/`, 글꼴 파일, Office 잠금 파일(`~$*`)은 커밋하지 않는다.
 - 구현은 Python이고 `claude_harness_python` 스킬의 흐름(Clarify → Context → Plan → Generate → Evaluate → PR)을 따른다. 설계는 `docs/TRD.md`, 진행 상황은 `docs/exec-plans/active/`, 에이전트용 목차는 `AGENTS.md`에 있다.
 - 사용 형태는 CLI가 먼저다. 웹 화면은 1차 통과 후 같은 로직 위에 붙인다. 요약 코멘트와 특이사항은 규칙 기반 문장 틀로 만든다(LLM 호출 없음).
 
@@ -19,7 +19,8 @@ Forward Fellowship 6주차 실습 «샘플세무법인 법인세 보고서 자�
 
 - `replied_pdfs/` — 담당자가 채팅 답변으로 보내 준 PDF(2차 재송부본, 3차 비교용). 커밋한다.
 - `submitted_reports/` — 차수별로 제출해 통과한 보고서 PDF. 커밋한다.
-- 저장소 루트의 PDF·Excel(사이트의 «받은 자료»)과 `output/`은 커밋하지 않는다.
+- 저장소 루트의 PDF·Excel·실습 안내 — 사이트의 «받은 자료». 커밋한다. `샘플컴퍼니2_2024`·`2025`는 금액이 가려진 처음 자료이고 온전한 자료는 `replied_pdfs/`의 재송부본이다.
+- `output/`은 커밋하지 않는다.
 - 새 자료의 첫 실행 결과는 `output/<차수>_첫결과/`, 수정 후 결과는 `output/<차수>_수정후/`, 이전 자료 재실행은 `output/<차수>_재실행/`에 둔다.
 
 ## 명령
