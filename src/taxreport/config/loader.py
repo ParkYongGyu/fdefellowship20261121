@@ -73,6 +73,8 @@ class CreditRules(BaseModel):
     code_header: str
     code_pattern: str
     amount_header_pattern: str
+    row_number_pattern: str = ""
+    glued_law_pattern: str = ""
     law_pattern: str
     skip_labels: list[str]
 

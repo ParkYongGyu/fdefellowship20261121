@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from datetime import date, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import structlog
@@ -15,6 +16,7 @@ from taxreport.domain.models import (
     CompanyIdentity,
     Filing,
     LineItem,
+    TaxCredit,
     TaxSummary,
 )
 from taxreport.extract.checks import run_checks
@@ -122,6 +124,9 @@ def extract_filing(path: Path, forms: FormsConfig) -> Filing:
         )
     )
 
+    credits = extract_credits(doc, index.pages(forms.credits.form), forms.credits)
+    warnings.extend(check_credit_total(tax, credits, forms.credits.form))
+
     filing = Filing(
         source_file=doc.file_name,
         identity=identity,
@@ -131,7 +136,7 @@ def extract_filing(path: Path, forms: FormsConfig) -> Filing:
         adjustments=extract_adjustments(
             doc, index.pages(forms.adjustments.form), forms.adjustments
         ),
-        credits=extract_credits(doc, index.pages(forms.credits.form), forms.credits),
+        credits=credits,
         losses=extract_losses(doc, index.pages(forms.losses.form), forms.losses),
         schedules=schedules,
         forms_found=index.refs(),
@@ -185,6 +190,27 @@ def check_gross_receipts(
                 "범위가 다를 수 있습니다. 보고서의 매출액은 표준손익계산서 값을 썼고 다른 값으로 바꾸지 않았습니다"
             ]
     return []
+
+
+def check_credit_total(tax: TaxSummary, credits: Sequence[TaxCredit], form_name: str) -> list[str]:
+    """읽은 공제·감면세액의 합을 «산출세액 - 총부담세액»과 견준다.
+
+    공제·감면이 있는데 합계표에서 읽지 못하면 보고서가 «공제·감면 없음»이라고 잘못 쓰게 된다.
+    가산세 등으로 두 값이 다를 수 있으므로 값은 고치지 않고 차이만 알린다.
+    """
+    calculated = tax.values.get("calculated_tax")
+    total = tax.values.get("total_tax")
+    if calculated is None or total is None or calculated.value is None or total.value is None:
+        return []
+    expected = calculated.value - total.value
+    found = sum((credit.amount.value or Decimal(0) for credit in credits), Decimal(0))
+    if expected == found:
+        return []
+    return [
+        f"세액조정계산서의 산출세액 - 총부담세액은 {expected:,}원인데 «{form_name}»에서 읽은 "
+        f"공제·감면세액은 {len(credits)}건 합계 {found:,}원입니다(차이 {expected - found:,}원). "
+        "읽지 못한 공제·감면 항목이나 가산세가 있는지 원문 확인이 필요합니다"
+    ]
 
 
 def pair_filings(first: Filing, second: Filing) -> CompanyCase:
