@@ -60,4 +60,4 @@ tests/
 
 ## 저장소에 올리지 않는 것
 
-고객에게 받은 Excel·PDF·안내 자료, `output/`, `.harness/`, `run_phases.py`, 글꼴 파일. `.gitignore` 참고.
+`output/`, `.harness/`, `run_phases.py`, 글꼴 파일, Office 잠금 파일. `.gitignore` 참고. 실습에서 받은 자료(루트의 PDF·Excel·실습 안내)는 커밋돼 있고, 새로 받는 자료는 사용자에게 확인한 뒤 올린다.
